@@ -1,0 +1,8 @@
+os
+shutil
+tesspy
+mercantile
+matplotlib
+pyproj
+geopandas
+pandas

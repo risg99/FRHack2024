@@ -6,3 +6,5 @@ matplotlib
 pyproj
 geopandas
 pandas
+networkx
+streamlit

@@ -57,6 +57,32 @@ def plot_map(boundary_threshold=0.5):
 
     gdf_urban = gpd.read_file("files/urban/urban.shp")
     gdf_urban.crs = "epsg:4326"
+
+    tiles_with_counts = gpd.read_file('files/tiles_counts/tiles_with_counts.shp')
+
+    all_mesures = tiles_with_counts[~tiles_with_counts.meandbm_to.isnull()][['geometry', 'meandbm_to']]
+    _4g_mesures = tiles_with_counts[~tiles_with_counts.meandbm_4g.isnull()][['geometry', 'meandbm_4g']]
+    _5g_mesures = tiles_with_counts[~tiles_with_counts.meandbm_5g.isnull()][['geometry', 'meandbm_5g']]
+
+
+    # Define your ranges and corresponding colors in a dictionary
+    color_map = {
+        (-85, -41): 'green',
+        (-105, -86): 'orange',
+        (-141, -106): 'red'
+    }
+
+    # Function to map each value in the float column to its corresponding color based on the defined ranges
+    def map_to_color(value):
+        for range_, color in color_map.items():
+            if range_[0] <= value < range_[1]:
+                return color
+        return 'black'  # Default color if no range matches
+
+    # Apply the mapping function to the float column to create a new column containing colors
+    all_mesures['color'] = all_mesures['meandbm_to'].apply(lambda x: map_to_color(x))
+    _4g_mesures['color'] = tiles_with_counts['meandbm_4g'].apply(lambda x: map_to_color(x))
+    _5g_mesures['color'] = tiles_with_counts['meandbm_5g'].apply(lambda x: map_to_color(x))
     
     large_tiles_urban = deps_large[deps_large.apply(urban_intersects_filter, axis=1)[0]]
 
@@ -65,6 +91,7 @@ def plot_map(boundary_threshold=0.5):
     gdf_joined_urban.set_index('index_copy', inplace=True)
     large_tiles_urban['urban_area_proportion'] = gdf_joined_urban.to_crs(epsg=4326).area / deps_large.to_crs(epsg=4326).area
     large_tiles_urban_filtered = large_tiles_urban[large_tiles_urban['urban_area_proportion'] >= boundary_threshold]
+    
 
     small_tiles = get_tiles_for_level(large_tiles_urban_filtered, SMALL_ZOOM_LEVEL)
 
@@ -80,6 +107,9 @@ def plot_map(boundary_threshold=0.5):
     small_tiles_map = small_tiles.explore(m=medium_tiles_map, color="purple", name='Urban Tiles', layer_control=True)
     gdf_urban_map = gdf_urban.explore(m=small_tiles_map, color="black", name='Contours Urbains', layer_control=True)
     m = gdf_periurban.explore(m=gdf_urban_map, color="black", name='Contours Peri-Urbains', layer_control=True)
+    m = _4g_mesures.explore(m=m, color='color', name='4G average')
+    m = _5g_mesures.explore(m=m, color='color', name='5G average')
+    m = all_mesures.explore(m=m, color='color', name='All average')
     folium.LayerControl().add_to(m)
     return m
 
